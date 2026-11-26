@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>家教工時簿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+/* VOICE: 安靜、實用的老師手帳，每晚花十秒就能確認
+   IDEA: 紙本點名簿——藍筆記時數、紅筆標出沒確認的日子
+   PICTURE: 今天的點名卡就是主畫面；總覽是一張月曆格
+   COLOUR and TYPE: 白紙、墨色、藍筆 #2c56c9、紅筆 #d2392b；Noto Sans TC + Barlow Condensed 數字
+   LAYOUT: 單欄 ≤640px，頂部分頁；手機優先 */
+:root{color-scheme:light dark;
+ --bg:light-dark(#ffffff,#12151c);--paper:light-dark(#f4f6fa,#1b1f29);--line:light-dark(#dfe3ec,#2c3240);
+ --ink:light-dark(#18202e,#e9ecf3);--mute:light-dark(#5d6677,#9aa3b5);
+ --blue:light-dark(#2c56c9,#7d9dff);--blueSoft:light-dark(#e8eefc,#212b47);
+ --red:light-dark(#d2392b,#ff7a6b);--redSoft:light-dark(#fdecea,#3a2224)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;overflow-x:clip}
+.num{font-family:"Barlow Condensed","Noto Sans TC",sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar{max-width:640px;margin:0 auto;padding:10px 16px 0;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.bar h1{font-size:17px;margin:0;font-weight:700;display:flex;align-items:center;gap:8px}
+.bar .mt{font-size:14px;color:var(--mute)}
+.sync-pill{font-size:12px;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--paper);color:var(--mute);border:1px solid var(--line);text-decoration:none}
+.sync-pill.ok{background:var(--blueSoft);color:var(--blue);border-color:transparent}
+.sync-pill.err{background:var(--redSoft);color:var(--red);border-color:transparent}
+nav{max-width:640px;margin:0 auto;display:flex;padding:0 8px}
+nav a{flex:1;text-align:center;padding:12px 4px;color:var(--mute);text-decoration:none;font-weight:500;border-bottom:3px solid transparent;min-height:44px}
+nav a[aria-current=page]{color:var(--blue);border-color:var(--blue)}
+main{max-width:640px;margin:0 auto;padding:20px 16px 120px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--bg);padding:0 14px;transition:background-color .15s,border-color .15s,opacity .15s}
+button:hover:not(:disabled){background:var(--paper)}
+button:focus-visible,input:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+input{font-size:16px;min-height:44px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--bg);width:100%}
+.primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+.primary:hover:not(:disabled){background:var(--blue);opacity:.92}
+.ghost{border-color:transparent;background:transparent;color:var(--blue)}
+.ghost:hover:not(:disabled){background:var(--blueSoft)}
+.danger{color:var(--red)}
+.ghost.danger:hover:not(:disabled){background:var(--redSoft)}
+.daynav{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.daynav .t{flex:1;text-align:center}
+.daynav .t b{display:block;font-size:34px;line-height:1.05}
+.daynav .t span{color:var(--mute);font-size:14px}
+.status{text-align:center;font-size:14px;margin:0 0 16px;padding:8px;border-radius:10px}
+.status.ok{background:var(--blueSoft);color:var(--blue)}
+.status.todo{background:var(--redSoft);color:var(--red)}
+.card{border:1px solid var(--line);border-radius:14px;padding:14px 14px 12px;margin-bottom:12px;background:var(--bg);position:relative}
+.card.off{background:var(--paper)}
+.card.off .nm,.card.off .amt{color:var(--mute);text-decoration:line-through}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.nm{font-weight:700;font-size:20px;flex:1}
+.amt{font-size:30px;color:var(--blue);line-height:1}
+.sub{font-size:13px;color:var(--mute);margin:2px 0 10px}
+.step{display:flex;align-items:center;gap:6px}
+.step button{width:44px;padding:0;font-size:22px;line-height:1}
+.step input{width:76px;text-align:center}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{min-height:36px;padding:0 12px;border-radius:999px;font-size:14px}
+.chip[aria-pressed=true]{background:var(--blue);border-color:var(--blue);color:#fff}
+.chip[aria-pressed=true]:hover{background:var(--blue);opacity:.92}
+.total{display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid var(--ink);margin-top:18px;padding-top:12px}
+.total .num{font-size:40px}
+.dock{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom));z-index:4}
+.dock div{max-width:640px;margin:0 auto;display:flex;gap:10px}
+.dock button{flex:1}
+.dock .sum{flex:none;display:flex;flex-direction:column;justify-content:center;line-height:1.1}
+.dock .sum small{font-size:12px;color:var(--mute)}
+.dock .sum b{font-size:24px}
+.addbox{border:1px dashed var(--line);border-radius:14px;padding:14px;margin-top:12px}
+.addbox h3,.sec h3{margin:0 0 10px;font-size:15px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+label.f{display:block;font-size:13px;color:var(--mute)}
+label.f input,label.f select{margin-top:4px}
+select{min-height:44px;border:1px solid var(--line);border-radius:10px;padding:0 10px;background:var(--bg);width:100%;font-size:16px}
+.hero{margin-bottom:18px}
+.hero .big{font-size:clamp(48px,14vw,72px);line-height:1;color:var(--ink)}
+.hero p{margin:6px 0 0;color:var(--mute);font-size:14px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:8px 0 22px}
+.cal .h{font-size:12px;color:var(--mute);text-align:center;padding:2px 0}
+.cal button{min-height:58px;padding:4px 2px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;background:var(--bg)}
+.cal button .d{font-size:13px;color:var(--mute)}
+.cal button .v{font-size:15px}
+.cal .done{background:var(--blueSoft);border-color:transparent}.cal .done .v{color:var(--blue)}
+.cal .miss{background:var(--redSoft);border-color:var(--red)}.cal .miss .v{color:var(--red);font-size:12px}
+.cal .plan .v{color:var(--mute)}
+.cal .today{outline:2px solid var(--ink);outline-offset:-2px}
+.cal .empty{border:0;background:transparent}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-top:-14px;margin-bottom:22px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.srow{padding:10px 0;border-bottom:1px solid var(--line)}
+.srow .top{display:flex;justify-content:space-between;gap:10px}
+.srow .meter{height:8px;background:var(--paper);border-radius:4px;margin-top:6px;overflow:hidden}
+.srow .meter b{display:block;height:100%;background:var(--blue);border-radius:4px}
+.srow small{color:var(--mute)}
+.sec{margin-top:26px}
+.days{list-style:none;padding:0;margin:0}
+.days li{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.days li .dd{width:88px;flex:none;color:var(--mute)}
+.days li .it{flex:1}
+.tbl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 44px;gap:6px;align-items:center;margin-top:6px}
+.note{font-size:13px;color:var(--mute)}
+.empty-state{text-align:center;color:var(--mute);padding:28px 10px;border:1px dashed var(--line);border-radius:14px}
+.empty-state a{color:var(--blue);font-weight:500}
+details.guide{margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper);font-size:13px}
+details.guide summary{cursor:pointer;font-weight:500;color:var(--blue);user-select:none}
+details.guide ol{margin:8px 0 0;padding-left:20px;color:var(--ink);line-height:1.6}
+details.guide code{background:var(--bg);padding:1px 5px;border-radius:4px;border:1px solid var(--line);font-family:monospace;font-size:12px;word-break:break-all}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9;white-space:nowrap}
+.toast.show{opacity:1}
+@media(prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>家教工時簿<a href="#schedule" class="sync-pill" id="syncBadge">本機模式</a></h1>
+    <span class="mt" id="mtd"></span>
+  </div>
+  <nav>
+    <a href="#today" id="n-today">今日確認</a>
+    <a href="#overview" id="n-overview">月總覽</a>
+    <a href="#schedule" id="n-schedule">課表設定</a>
+  </nav>
+</header>
+<main id="app"><p class="note">載入中…</p></main>
+<div class="dock" id="dock" hidden><div id="dockIn"></div></div>
+<div class="toast" id="toast" role="status"></div>
+<input type="file" id="importFile" accept=".json,application/json" hidden>
+<script>
+{
+const TZ = "Asia/Taipei", WK = "日一二三四五六";
+const STORAGE_KEY = "tutor_timesheet_v1";
+const GDRIVE_CFG_KEY = "tutor_timesheet_gdrive_v1";
+const DRIVE_FILE_NAME = "家教工時簿_資料備份.json";
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+
+// 應用程式全域狀態
+const S = {
+  schedule: [],
+  scheduleDraft: null,
+  months: {},
+  drafts: {},
+  start: null,
+  updatedAt: null,
+  view: "today",
+  day: todayKey(),
+  month: todayKey().slice(0, 7),
+  saving: false,
+  armed: null,
+  // Google Drive 同步狀態
+  gdrive: {
+    clientId: "",
+    accessToken: null,
+    expiresAt: 0,
+    fileId: null,
+    status: "local", // local | connected | syncing | error
+    lastSync: null,
+    errorMsg: ""
+  }
+};
+
+let tokenClient = null;
+let loadedClientId = "";
+let pendingDriveAction = null;
+
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = n => "NT$" + Math.round(n).toLocaleString("en-US");
+const fmtH = h => (Math.round(h * 100) / 100).toString();
+function todayKey(){ return new Intl.DateTimeFormat("en-CA", {timeZone: TZ}).format(new Date()); }
+const dObj = k => new Date(k + "T00:00:00Z");
+const keyOf = d => d.toISOString().slice(0, 10);
+const addDays = (k, n) => { const d = dObj(k); d.setUTCDate(d.getUTCDate() + n); return keyOf(d); };
+const isoWd = k => { const w = dObj(k).getUTCDay(); return w === 0 ? 7 : w; };
+const label = k => { const d = dObj(k); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`; };
+const daysIn = ym => { const [y, m] = ym.split("-").map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); };
+
+function toast(t){
+  const el = $("toast");
+  el.textContent = t;
+  el.classList.add("show");
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => el.classList.remove("show"), 2200);
+}
+
+/* ---------- localStorage 離線儲存與讀取 ---------- */
+function loadStore(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data && typeof data === "object") {
+        if (Array.isArray(data.schedule)) S.schedule = data.schedule;
+        if (data.months && typeof data.months === "object") S.months = data.months;
+        if (typeof data.start === "string") S.start = data.start;
+        if (typeof data.updatedAt === "string") S.updatedAt = data.updatedAt;
+      }
+    }
+    const gRaw = localStorage.getItem(GDRIVE_CFG_KEY);
+    if (gRaw) {
+      const gData = JSON.parse(gRaw);
+      if (gData && typeof gData === "object") {
+        S.gdrive.clientId = gData.clientId || "";
+        S.gdrive.fileId = gData.fileId || null;
+        S.gdrive.lastSync = gData.lastSync || null;
+      }
+    }
+  } catch (e) {
+    console.error("讀取本機資料失敗:", e);
+    toast("讀取本機資料時發生錯誤");
+  }
+}
+
+function saveGdriveConfig(){
+  try {
+    localStorage.setItem(GDRIVE_CFG_KEY, JSON.stringify({
+      clientId: S.gdrive.clientId,
+      fileId: S.gdrive.fileId,
+      lastSync: S.gdrive.lastSync
+    }));
+  } catch (e) {
+    console.error("儲存 Google Drive 設定失敗:", e);
+  }
+}
+
+function getPayload(){
+  return {
+    version: 1,
+    schedule: S.schedule,
+    months: S.months,
+    start: S.start,
+    updatedAt: S.updatedAt || new Date().toISOString()
+  };
+}
+
+function persistStore(syncToCloud = true){
+  S.updatedAt = new Date().toISOString();
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(getPayload()));
+    if (syncToCloud && S.gdrive.accessToken && Date.now() < S.gdrive.expiresAt) {
+      pushToDrive(true);
+    }
+    return true;
+  } catch (e) {
+    console.error("儲存至 localStorage 失敗:", e);
+    toast(e.name === "QuotaExceededError" ? "瀏覽器儲存空間已滿，無法儲存" : "本機儲存失敗，請檢查瀏覽器設定");
+    return false;
+  }
+}
+
+/* ---------- Google Drive REST API v3 & GIS 授權 ---------- */
+function ensureTokenClient(){
+  const cid = S.gdrive.clientId.trim();
+  if (!cid) {
+    toast("請先輸入 Google OAuth Client ID");
+    return false;
+  }
+  if (!window.google?.accounts?.oauth2) {
+    toast("Google 登入元件尚未載入完成，請稍候再試");
+    return false;
+  }
+  if (!tokenClient || loadedClientId !== cid) {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: cid,
+      scope: DRIVE_SCOPE,
+      callback: async (resp) => {
+        if (resp.error) {
+          S.gdrive.status = "error";
+          S.gdrive.errorMsg = "授權取消或失敗 (" + resp.error + ")";
+          toast("Google 授權失敗");
+          render();
+          return;
+        }
+        S.gdrive.accessToken = resp.access_token;
+        S.gdrive.expiresAt = Date.now() + ((+resp.expires_in || 3500) - 60) * 1000;
+        S.gdrive.status = "connected";
+        S.gdrive.errorMsg = "";
+        render();
+
+        const action = pendingDriveAction;
+        pendingDriveAction = null;
+        if (action === "pull") {
+          await pullFromDrive(false);
+        } else if (action === "push") {
+          await pushToDrive(false);
+        } else {
+          await initialSyncWithDrive();
+        }
+      }
+    });
+    loadedClientId = cid;
+  }
+  return true;
+}
+
+function requestDriveAuth(action = "init", promptMode = ""){
+  if (!ensureTokenClient()) return;
+  pendingDriveAction = action;
+  tokenClient.requestAccessToken({prompt: promptMode});
+}
+
+async function driveFetch(url, options = {}){
+  if (!S.gdrive.accessToken || Date.now() >= S.gdrive.expiresAt) {
+    S.gdrive.accessToken = null;
+    S.gdrive.status = "error";
+    S.gdrive.errorMsg = "登入憑證已過期，請重新點擊「連線 Google 雲端」";
+    render();
+    throw new Error("TOKEN_EXPIRED");
+  }
+  const headers = new Headers(options.headers || {});
+  headers.set("Authorization", "Bearer " + S.gdrive.accessToken);
+  const res = await fetch(url, {...options, headers});
+  if (res.status === 401) {
+    S.gdrive.accessToken = null;
+    S.gdrive.status = "error";
+    S.gdrive.errorMsg = "憑證已失效，請重新連線 Google 雲端";
+    render();
+    throw new Error("UNAUTHORIZED");
+  }
+  return res;
+}
+
+async function findDriveFile(){
+  if (S.gdrive.fileId) {
+    const check = await driveFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(S.gdrive.fileId)}?fields=id,name,trashed`);
+    if (check.ok) {
+      const meta = await check.json();
+      if (!meta.trashed) return meta.id;
+    }
+    S.gdrive.fileId = null;
+  }
+  const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
+  const res = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc`);
+  if (!res.ok) throw new Error("搜尋雲端檔案失敗 (" + res.status + ")");
+  const data = await res.json();
+  if (data.files && data.files.length > 0) {
+    S.gdrive.fileId = data.files[0].id;
+    saveGdriveConfig();
+    return S.gdrive.fileId;
+  }
+  return null;
+}
+
+async function readDriveFileContent(fileId){
+  const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`);
+  if (!res.ok) throw new Error("讀取雲端檔案內容失敗 (" + res.status + ")");
+  return await res.json();
+}
+
+async function writeDriveFileContent(fileId, payloadObj){
+  const metadata = {
+    name: DRIVE_FILE_NAME,
+    mimeType: "application/json"
+  };
+  const boundary = "-------tutor_timesheet_boundary_" + Date.now();
+  const body = [
+    `--${boundary}`,
+    "Content-Type: application/json; charset=UTF-8",
+    "",
+    JSON.stringify(metadata),
+    `--${boundary}`,
+    "Content-Type: application/json; charset=UTF-8",
+    "",
+    JSON.stringify(payloadObj, null, 2),
+    `--${boundary}--`
+  ].join("\r\n");
+
+  const url = fileId
+    ? `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(fileId)}?uploadType=multipart&fields=id,modifiedTime`
+    : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,modifiedTime`;
+
+  const res = await driveFetch(url, {
+    method: fileId ? "PATCH" : "POST",
+    headers: {"Content-Type": `multipart/related; boundary=${boundary}`},
+    body
+  });
+  if (!res.ok) throw new Error("上傳至 Google Drive 失敗 (" + res.status + ")");
+  const result = await res.json();
+  S.gdrive.fileId = result.id;
+  S.gdrive.lastSync = new Date().toLocaleString("zh-TW", {timeZone: TZ, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"});
+  saveGdriveConfig();
+  return result;
+}
+
+async function initialSyncWithDrive(){
+  S.gdrive.status = "syncing";
+  S.gdrive.errorMsg = "";
+  render();
+  try {
+    const fileId = await findDriveFile();
+    if (!fileId) {
+      await writeDriveFileContent(null, getPayload());
+      S.gdrive.status = "connected";
+      toast("已在 Google 雲端建立「" + DRIVE_FILE_NAME + "」");
+      render();
+      return;
+    }
+    const cloud = await readDriveFileContent(fileId);
+    const hasLocalData = S.schedule.length > 0 || Object.keys(S.months).length > 0;
+    const hasCloudData = cloud && (Array.isArray(cloud.schedule) && cloud.schedule.length > 0 || (cloud.months && Object.keys(cloud.months).length > 0));
+
+    if (!hasLocalData && hasCloudData) {
+      applyImportedData(cloud);
+      S.gdrive.lastSync = new Date().toLocaleString("zh-TW", {timeZone: TZ, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"});
+      saveGdriveConfig();
+      S.gdrive.status = "connected";
+      toast("已從 Google 雲端載入紀錄");
+      render();
+    } else if (hasLocalData && !hasCloudData) {
+      await writeDriveFileContent(fileId, getPayload());
+      S.gdrive.status = "connected";
+      toast("已將本機紀錄同步至 Google 雲端");
+      render();
+    } else if (hasLocalData && hasCloudData) {
+      const cloudTime = cloud.updatedAt ? Date.parse(cloud.updatedAt) : 0;
+      const localTime = S.updatedAt ? Date.parse(S.updatedAt) : 0;
+      if (cloudTime > localTime) {
+        applyImportedData(cloud);
+        toast("已從 Google 雲端同步較新的紀錄");
+      } else {
+        await writeDriveFileContent(fileId, getPayload());
+        toast("已將本機最新紀錄上傳至 Google 雲端");
+      }
+      S.gdrive.lastSync = new Date().toLocaleString("zh-TW", {timeZone: TZ, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"});
+      saveGdriveConfig();
+      S.gdrive.status = "connected";
+      render();
+    } else {
+      S.gdrive.lastSync = new Date().toLocaleString("zh-TW", {timeZone: TZ, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"});
+      saveGdriveConfig();
+      S.gdrive.status = "connected";
+      toast("已連線 Google 雲端硬碟");
+      render();
+    }
+  } catch (e) {
+    console.error("Google Drive 初始同步失敗:", e);
+    S.gdrive.status = "error";
+    S.gdrive.errorMsg = e.message || "同步失敗";
+    toast("雲端同步失敗：" + S.gdrive.errorMsg);
+    render();
+  }
+}
+
+async function pushToDrive(silent = false){
+  if (!S.gdrive.accessToken || Date.now() >= S.gdrive.expiresAt) {
+    if (!silent) requestDriveAuth("push");
+    return;
+  }
+  S.gdrive.status = "syncing";
+  if (!silent) render();
+  try {
+    const fileId = await findDriveFile();
+    await writeDriveFileContent(fileId, getPayload());
+    S.gdrive.status = "connected";
+    S.gdrive.errorMsg = "";
+    if (!silent) toast("已上傳至 Google 雲端硬碟");
+  } catch (e) {
+    console.error("上傳雲端失敗:", e);
+    S.gdrive.status = "error";
+    S.gdrive.errorMsg = e.message || "上傳失敗";
+    if (!silent) toast("上傳雲端失敗");
+  }
+  render();
+}
+
+async function pullFromDrive(silent = false){
+  if (!S.gdrive.accessToken || Date.now() >= S.gdrive.expiresAt) {
+    if (!silent) requestDriveAuth("pull");
+    return;
+  }
+  S.gdrive.status = "syncing";
+  if (!silent) render();
+  try {
+    const fileId = await findDriveFile();
+    if (!fileId) {
+      S.gdrive.status = "connected";
+      if (!silent) toast("雲端尚未建立備份檔，將先上傳目前資料");
+      await pushToDrive(silent);
+      return;
+    }
+    const cloud = await readDriveFileContent(fileId);
+    applyImportedData(cloud);
+    S.gdrive.lastSync = new Date().toLocaleString("zh-TW", {timeZone: TZ, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"});
+    saveGdriveConfig();
+    S.gdrive.status = "connected";
+    S.gdrive.errorMsg = "";
+    if (!silent) toast("已從 Google 雲端載入並覆蓋本機資料");
+  } catch (e) {
+    console.error("從雲端載入失敗:", e);
+    S.gdrive.status = "error";
+    S.gdrive.errorMsg = e.message || "載入失敗";
+    if (!silent) toast("從雲端載入失敗");
+  }
+  render();
+}
+
+function disconnectDrive(){
+  if (S.gdrive.accessToken && window.google?.accounts?.oauth2) {
+    try { google.accounts.oauth2.revoke(S.gdrive.accessToken); } catch (_) {}
+  }
+  S.gdrive.accessToken = null;
+  S.gdrive.expiresAt = 0;
+  S.gdrive.status = "local";
+  S.gdrive.errorMsg = "";
+  toast("已中斷 Google 雲端連線（切換回本機模式）");
+  render();
+}
+
+function applyImportedData(parsed){
+  if (!parsed || typeof parsed !== "object") throw new Error("格式不符");
+  S.schedule = Array.isArray(parsed.schedule) ? parsed.schedule : [];
+  S.months = parsed.months && typeof parsed.months === "object" ? parsed.months : {};
+  S.start = typeof parsed.start === "string" ? parsed.start : null;
+  S.updatedAt = typeof parsed.updatedAt === "string" ? parsed.updatedAt : new Date().toISOString();
+  S.scheduleDraft = null;
+  S.drafts = {};
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(getPayload()));
+}
+
+/* ---------- 計費核心邏輯 ---------- */
+function tablePay(table, h){
+  const pts = table.map(([a, b]) => [+a, +b]).filter(p => p[0] > 0).sort((a, b) => a[0] - b[0]);
+  if (h <= 0 || !pts.length) return 0;
+  const hit = pts.find(p => Math.abs(p[0] - h) < 1e-9);
+  if (hit) return hit[1];
+  if (pts.length === 1) return Math.round(pts[0][1] / pts[0][0] * h);
+  let i = pts.findIndex(p => p[0] > h);
+  if (i <= 0) i = i === 0 ? 1 : pts.length - 1;
+  const [h1, a1] = pts[i - 1], [h2, a2] = pts[i];
+  return Math.max(0, Math.round(a1 + (a2 - a1) * (h - h1) / (h2 - h1)));
+}
+
+function pay(s, h){
+  return s.mode === "table" ? tablePay(s.table || [], h) : Math.round((+s.rate || 0) * h);
+}
+
+function payText(s){
+  return s.mode === "table"
+    ? (s.table || []).map(([h, a]) => `${fmtH(+h)} 小時 ${(+a).toLocaleString()} 元`).join("、")
+    : `時薪 ${(+s.rate || 0).toLocaleString()}`;
+}
+
+const sched = () => S.schedule || [];
+const sById = id => sched().find(s => s.id === id);
+function planned(k){ return sched().filter(s => (s.days || []).includes(isoWd(k))); }
+function plannedEntries(k){ return planned(k).map(s => ({sid: s.id, name: s.name, hours: +s.hours, amount: pay(s, +s.hours), off: false})); }
+
+/* ---------- 日常紀錄與課表操作 ---------- */
+function rec(k){ return S.months[k.slice(0, 7)]?.days?.[k]; }
+
+function draftFor(k){
+  if (!S.drafts[k]) {
+    const r = rec(k);
+    S.drafts[k] = {
+      entries: r ? structuredClone(r.entries) : plannedEntries(k),
+      dirty: false
+    };
+  }
+  return S.drafts[k];
+}
+
+function confirmDay(k){
+  if (S.saving) return;
+  const d = draftFor(k), ym = k.slice(0, 7);
+  const prevMonths = structuredClone(S.months);
+  const prevStart = S.start;
+
+  const doc = structuredClone(S.months[ym] || {days: {}});
+  doc.days = doc.days || {};
+  doc.days[k] = {
+    entries: d.entries.filter(e => !e.off && e.amount > 0),
+    confirmedAt: new Date().toISOString()
+  };
+
+  S.saving = true;
+  S.months[ym] = doc;
+  if (!S.start || k < S.start) S.start = k;
+
+  if (persistStore()) {
+    delete S.drafts[k];
+    const tot = doc.days[k].entries.reduce((a, e) => a + e.amount, 0);
+    toast(`已確認 ${label(k)}：${money(tot)}`);
+  } else {
+    S.months = prevMonths;
+    S.start = prevStart;
+  }
+  S.saving = false;
+  render();
+}
+
+function saveSchedule(){
+  const list = S.scheduleDraft.map(s => ({
+    ...s,
+    name: (s.name || "").trim() || "未命名",
+    hours: +s.hours || 0,
+    rate: +s.rate || 0,
+    table: (s.table || []).map(r => [+r[0], +r[1]]).filter(r => r[0] > 0)
+  }));
+  const prevSchedule = S.schedule;
+  S.schedule = list;
+
+  if (persistStore()) {
+    S.scheduleDraft = null;
+    for (const k in S.drafts) {
+      if (!rec(k) && !S.drafts[k].dirty) delete S.drafts[k];
+    }
+    toast("課表已儲存");
+  } else {
+    S.schedule = prevSchedule;
+  }
+  render();
+}
+
+/* ---------- 分頁一：今日確認 ---------- */
+function viewToday(){
+  const k = S.day;
+  const d = draftFor(k), r = rec(k), isToday = k === todayKey();
+  const status = r
+    ? `<p class="status ok">已確認（${new Date(r.confirmedAt).toLocaleString("zh-TW", {timeZone: TZ, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit"})}）${d.dirty ? "・有未儲存的修改" : ""}</p>`
+    : (k <= todayKey() && d.entries.length ? `<p class="status todo">還沒確認</p>` : "");
+
+  const cards = d.entries.map((e, i) => {
+    const s = e.sid ? sById(e.sid) : null;
+    return `<div class="card${e.off ? " off" : ""}">
+      <div class="row"><span class="nm">${esc(e.name)}</span><span class="amt num" id="amt-${i}">${money(e.off ? 0 : e.amount)}</span></div>
+      <div class="sub">${s ? esc(payText(s)) + "・課表 " + fmtH(+s.hours) + " 小時" : "其他收入"}</div>
+      <div class="row">
+        ${s ? `<div class="step"><button data-a="dec" data-i="${i}" aria-label="減少半小時">−</button>
+          <input class="num" inputmode="decimal" data-a="hrs" data-i="${i}" value="${fmtH(e.hours)}" aria-label="${esc(e.name)} 時數">
+          <button data-a="inc" data-i="${i}" aria-label="增加半小時">＋</button><span class="note">小時</span></div>`
+          : `<div class="step"><span class="note">NT$</span><input class="num" inputmode="numeric" data-a="amt" data-i="${i}" value="${e.amount}" aria-label="金額"></div>`}
+        <span style="flex:1"></span>
+        ${s ? `<button class="ghost${e.off ? "" : " danger"}" data-a="off" data-i="${i}">${e.off ? "復原" : "沒上課"}</button>`
+            : `<button class="ghost danger" data-a="del" data-i="${i}">刪除</button>`}
+      </div></div>`;
+  }).join("");
+
+  const opts = sched().map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("");
+  return `
+  <div class="daynav">
+    <button data-a="prev" aria-label="前一天">‹</button>
+    <div class="t"><b class="num">${label(k)}</b><span>星期${WK[dObj(k).getUTCDay()]}${isToday ? "・今天" : ""}</span></div>
+    <button data-a="next" aria-label="後一天">›</button>
+  </div>
+  ${status}
+  ${cards || (sched().length
+    ? `<div class="empty-state">今天課表上沒有課。<br>有加課或其他收入，可以從下面新增。</div>`
+    : `<div class="empty-state">還沒有設定課表。<br><a href="#schedule">先到「課表設定」新增學生</a>，之後每天就會自動列出要上的課。</div>`)}
+  <div class="addbox">
+    <h3>新增加課或其他收入</h3>
+    <div class="grid2">
+      <label class="f">學生／項目<select id="addWho">${opts}<option value="__other">其他（直接填金額）</option></select></label>
+      <label class="f" id="addValL">時數<input id="addVal" class="num" inputmode="decimal" placeholder="例如 1.5"></label>
+    </div>
+    <label class="f" id="addNameL" hidden style="margin-top:8px">名稱<input id="addName" placeholder="例如 代課、翻譯"></label>
+    <button data-a="add" style="width:100%;margin-top:10px">新增</button>
+  </div>
+  `;
+}
+
+function dockToday(){
+  const r = rec(S.day), d = draftFor(S.day);
+  const lbl = r ? (d.dirty ? "儲存修改" : "已確認 ✓") : (d.entries.length ? "確認今天的工時" : "確認：今天沒有工作");
+  const total = d.entries.filter(e => !e.off).reduce((a, e) => a + e.amount, 0);
+  return `<span class="sum"><small>本日合計</small><b class="num" id="dayTotal">${money(total)}</b></span><button class="primary" data-a="confirm" ${r && !d.dirty ? "disabled style='opacity:.55'" : ""}>${lbl}</button>`;
+}
+
+/* ---------- 分頁二：月總覽 ---------- */
+function monthStats(ym){
+  const days = S.months[ym]?.days || {}, per = {};
+  let total = 0, hours = 0, n = 0;
+  for (const k of Object.keys(days)) {
+    for (const e of days[k].entries || []) {
+      const p = per[e.name] ||= {n: 0, h: 0, a: 0};
+      p.n++;
+      p.h += +e.hours || 0;
+      p.a += e.amount;
+      total += e.amount;
+      hours += +e.hours || 0;
+      n++;
+    }
+  }
+  let expected = 0;
+  const nd = daysIn(ym);
+  for (let i = 1; i <= nd; i++) {
+    const k = `${ym}-${String(i).padStart(2, "0")}`;
+    expected += planned(k).reduce((a, s) => a + pay(s, +s.hours), 0);
+  }
+  return {days, per, total, hours, n, expected};
+}
+
+function viewOverview(){
+  const ym = S.month;
+  const st = monthStats(ym), tk = todayKey(), nd = daysIn(ym);
+  const first = isoWd(`${ym}-01`), start = S.start || tk;
+  let cells = "一二三四五六日".split("").map(w => `<div class="h">${w}</div>`).join("");
+  for (let i = 1; i < first; i++) cells += `<button class="empty" disabled aria-hidden="true"></button>`;
+  let missing = 0;
+  for (let i = 1; i <= nd; i++) {
+    const k = `${ym}-${String(i).padStart(2, "0")}`, r = st.days[k], p = planned(k);
+    let cls = "", v = "";
+    if (r) {
+      cls = "done";
+      const a = r.entries.reduce((x, e) => x + e.amount, 0);
+      v = a ? Math.round(a).toLocaleString() : "休";
+    } else if (p.length && k < start) {
+      cls = "";
+      v = "";
+    } else if (p.length && k <= tk) {
+      cls = "miss";
+      v = "未確認";
+      missing++;
+    } else if (p.length) {
+      cls = "plan";
+      v = p.reduce((x, s) => x + pay(s, +s.hours), 0).toLocaleString();
+    }
+    if (k === tk) cls += " today";
+    cells += `<button class="${cls}" data-a="goday" data-k="${k}" aria-label="${label(k)} ${v}"><span class="d">${i}</span><span class="v num">${v}</span></button>`;
+  }
+
+  const max = Math.max(1, ...Object.values(st.per).map(p => p.a));
+  const rows = Object.entries(st.per).sort((a, b) => b[1].a - a[1].a).map(([nm, p]) => `
+    <div class="srow"><div class="top"><span><b>${esc(nm)}</b> <small>${p.n} 堂・${fmtH(p.h)} 小時</small></span><span class="num">${money(p.a)}</span></div>
+    <div class="meter"><b style="width:${(p.a / max * 100).toFixed(1)}%"></b></div></div>`).join("");
+
+  const list = Object.keys(st.days).sort().reverse().map(k => {
+    const es = st.days[k].entries;
+    return `<li><span class="dd">${label(k)}（${WK[dObj(k).getUTCDay()]}）</span><span class="it">${es.length ? es.map(e => `${esc(e.name)} ${fmtH(+e.hours || 0)}h`).join("、") : "沒有工作"}</span><span class="num">${money(es.reduce((a, e) => a + e.amount, 0))}</span></li>`;
+  }).join("");
+
+  const [y, m] = ym.split("-");
+  return `
+  <div class="daynav"><button data-a="pm" aria-label="上個月">‹</button>
+    <div class="t"><b class="num">${y}/${+m}</b><span>月總覽</span></div>
+    <button data-a="nm" aria-label="下個月">›</button></div>
+  <div class="hero"><div class="big num">${money(st.total)}</div>
+    <p>已確認 ${st.n} 堂、${fmtH(st.hours)} 小時・照課表全月約 ${money(st.expected)}${missing ? `・<span class="danger">${missing} 天未確認</span>` : ""}</p></div>
+  <div class="cal">${cells}</div>
+  <div class="legend"><span><i style="background:var(--blueSoft)"></i>已確認</span><span><i style="background:var(--redSoft);border:1px solid var(--red)"></i>未確認</span><span><i style="border:1px solid var(--line)"></i>課表預估</span></div>
+  <div class="sec"><h3>各學生小計</h3>${rows || `<p class="note">這個月還沒有確認過的課。</p>`}</div>
+  <div class="sec"><h3>每日明細</h3><ul class="days">${list || `<li class="note">尚無紀錄</li>`}</ul></div>
+  <div class="sec"><button data-a="csv" style="width:100%">匯出這個月（CSV，可用 Excel 開）</button></div>`;
+}
+
+function csvOf(ym){
+  const days = S.months[ym]?.days || {}, out = [["日期", "星期", "學生／項目", "時數", "金額"]];
+  for (const k of Object.keys(days).sort()) {
+    for (const e of days[k].entries) {
+      out.push([k, WK[dObj(k).getUTCDay()], e.name, fmtH(+e.hours || 0), e.amount]);
+    }
+  }
+  out.push([], ["", "", "合計", "", monthStats(ym).total]);
+  // 加上 UTF-8 BOM (\uFEFF) 確保 Excel 直接開啟中文不亂碼
+  return "\uFEFF" + out.map(r => r.map(c => /[",\n]/.test(String(c)) ? `"${String(c).replace(/"/g, '""')}"` : c).join(",")).join("\n");
+}
+
+function downloadBlob(filename, content, mimeType){
+  try {
+    const blob = new Blob([content], {type: mimeType});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  } catch (e) {
+    console.error("下載檔案失敗:", e);
+    return false;
+  }
+}
+
+/* ---------- 分頁三：課表設定 ---------- */
+function viewSchedule(){
+  const list = S.scheduleDraft ||= structuredClone(sched());
+  const cards = list.map((s, i) => `
+  <div class="card">
+    <label class="f">學生<input data-a="sname" data-i="${i}" value="${esc(s.name)}" placeholder="例如 王小明"></label>
+    <div style="margin:10px 0 4px" class="note">上課日</div>
+    <div class="chips">${[1, 2, 3, 4, 5, 6, 7].map(w => `<button class="chip" data-a="sday" data-i="${i}" data-w="${w}" aria-pressed="${(s.days || []).includes(w)}">${"一二三四五六日"[w - 1]}</button>`).join("")}</div>
+    <div class="grid2" style="margin-top:10px">
+      <label class="f">每堂時數<input class="num" inputmode="decimal" data-a="shours" data-i="${i}" value="${fmtH(+s.hours)}"></label>
+      <label class="f">計費方式<select data-a="smode" data-i="${i}"><option value="rate"${s.mode !== "table" ? " selected" : ""}>時薪</option><option value="table"${s.mode === "table" ? " selected" : ""}>依時數價目表</option></select></label>
+    </div>
+    ${s.mode === "table" ? `
+      <div class="tbl note"><span>時數</span><span>金額</span><span></span></div>
+      ${(s.table || []).map((r, j) => `<div class="tbl"><input class="num" inputmode="decimal" data-a="th" data-i="${i}" data-j="${j}" value="${r[0]}"><input class="num" inputmode="numeric" data-a="ta" data-i="${i}" data-j="${j}" value="${r[1]}"><button class="ghost danger" data-a="tdel" data-i="${i}" data-j="${j}" aria-label="刪除這列">×</button></div>`).join("")}
+      <button class="ghost" data-a="tadd" data-i="${i}">＋ 加一列</button>
+      <p class="note" style="margin:4px 0 0">表上沒有的時數，會用最接近的兩個價錢等比例推算。</p>`
+    : `<label class="f" style="margin-top:8px">時薪<input class="num" inputmode="numeric" data-a="srate" data-i="${i}" value="${s.rate || ""}"></label>`}
+    <div class="row" style="margin-top:8px"><span class="note" id="sp-${i}">每堂 ${money(pay(s, +s.hours || 0))}</span><span style="flex:1"></span>
+      <button class="ghost danger" data-a="sdel" data-i="${i}">${S.armed === i ? "再按一次確定刪除" : "刪除學生"}</button></div>
+  </div>`).join("");
+
+  const week = list.reduce((a, s) => a + (s.days || []).length * pay(s, +s.hours || 0), 0);
+  const isConnected = !!S.gdrive.accessToken && Date.now() < S.gdrive.expiresAt;
+  const originUrl = location.origin && location.origin !== "null" ? location.origin : "（請先透過網址開啟或部署至 GitHub Pages / Vercel）";
+
+  return `
+    <p class="note" style="margin-top:0">照這份課表，一週約 <b class="num" id="week">${money(week)}</b>。改課表不會動到已確認的紀錄。</p>
+    ${cards}
+    <button data-a="sadd" style="width:100%">＋ 新增學生</button>
+
+    <div class="sec">
+      <h3>Google 雲端硬碟同步</h3>
+      <div class="card" style="margin-bottom:0">
+        ${isConnected
+          ? `<p class="status ok" style="margin-bottom:10px">已連線 Google 雲端（檔案：${esc(DRIVE_FILE_NAME)}）${S.gdrive.lastSync ? `<br><small>上次同步：${esc(S.gdrive.lastSync)}</small>` : ""}</p>`
+          : (S.gdrive.status === "error"
+            ? `<p class="status todo" style="margin-bottom:10px">${esc(S.gdrive.errorMsg || "尚未連線")}</p>`
+            : `<p class="note" style="margin:0 0 10px">登入後，每次「確認工時」或「儲存課表」都會自動備份至您的 Google 雲端硬碟（僅存取本程式建立的單一檔案，不會讀取其他雲端資料）。</p>`)}
+        <label class="f">Google OAuth 2.0 用戶端 ID (Client ID)
+          <input data-a="gclientid" value="${esc(S.gdrive.clientId)}" placeholder="例如 123456789-xxxx.apps.googleusercontent.com">
+        </label>
+        <div class="grid2" style="margin-top:10px">
+          ${isConnected
+            ? `<button data-a="gdrivePush">立即上傳至雲端</button>
+               <button data-a="gdrivePull">從雲端載入覆蓋</button>`
+            : `<button class="primary" data-a="gdriveConnect" style="grid-column:1/-1">登入 Google 並啟用雲端同步</button>`}
+        </div>
+        ${isConnected ? `<button class="ghost danger" data-a="gdriveDisconnect" style="width:100%;margin-top:8px">登出雲端</button>` : ""}
+        <details class="guide">
+          <summary>如何免費取得 Google Client ID？（約 2 分鐘設定）</summary>
+          <ol>
+            <li>前往 <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a> 建立新專案，並在「API 和服務 → 程式庫」啟用 <b>Google Drive API</b>。</li>
+            <li>在「OAuth 同意畫面」選擇 <b>外部 (External)</b>，填寫應用程式名稱後，於「測試使用者」加入您自己的 Gmail。</li>
+            <li>在「憑證 → 建立憑證 → OAuth 用戶端 ID」選擇 <b>網頁應用程式</b>。</li>
+            <li>在「已授權的 JavaScript 來源」新增目前網址：<code>${esc(originUrl)}</code>，建立後複製 <b>用戶端 ID</b> 貼到上方即可。</li>
+          </ol>
+        </details>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>本機檔案備份與還原</h3>
+      <p class="note" style="margin:0 0 10px">所有紀錄皆同時快取於目前瀏覽器，離線也能正常使用。</p>
+      <div class="grid2">
+        <button data-a="exportJson">匯出 JSON 備份</button>
+        <button data-a="importJson">匯入 JSON 還原</button>
+      </div>
+    </div>`;
+}
+
+/* ---------- 畫面渲染與路由 ---------- */
+function render(){
+  for (const v of ["today", "overview", "schedule"]) {
+    const n = $("n-" + v);
+    if (S.view === v) n.setAttribute("aria-current", "page");
+    else n.removeAttribute("aria-current");
+  }
+  const ym = todayKey().slice(0, 7);
+  $("mtd").textContent = `${+ym.slice(5)} 月累計 ${money(monthStats(ym).total)}`;
+
+  // 更新頂部雲端同步狀態膠囊
+  const badge = $("syncBadge");
+  if (badge) {
+    const isConnected = !!S.gdrive.accessToken && Date.now() < S.gdrive.expiresAt;
+    badge.className = "sync-pill" + (S.gdrive.status === "error" ? " err" : (isConnected ? " ok" : ""));
+    badge.textContent = S.gdrive.status === "syncing"
+      ? "同步中…"
+      : (isConnected ? "雲端已連線" : (S.gdrive.status === "error" ? "雲端需重連" : "本機模式"));
+  }
+
+  const keep = document.activeElement?.dataset?.a
+    ? [document.activeElement.dataset.a, document.activeElement.dataset.i, document.activeElement.dataset.j, document.activeElement.selectionStart]
+    : null;
+
+  const html = S.view === "overview" ? viewOverview() : S.view === "schedule" ? viewSchedule() : viewToday();
+  $("app").innerHTML = html;
+  updateDock();
+
+  if (keep) {
+    const el = document.querySelector(`[data-a="${keep[0]}"]${keep[1] != null ? `[data-i="${keep[1]}"]` : ""}${keep[2] != null ? `[data-j="${keep[2]}"]` : ""}`);
+    if (el && el.tagName === "INPUT") {
+      el.focus();
+      try { el.setSelectionRange(keep[3], keep[3]); } catch (_) {}
+    }
+  }
+
+  const who = $("addWho");
+  if (who) {
+    const syncAddUI = () => {
+      const o = who.value === "__other" || !sched().length;
+      $("addNameL").hidden = !o;
+      $("addValL").firstChild.textContent = o ? "金額" : "時數";
+    };
+    syncAddUI();
+    who.onchange = syncAddUI;
+  }
+}
+
+function updateDock(){
+  const dock = S.view === "today"
+    ? dockToday()
+    : (S.view === "schedule" && S.scheduleDraft && JSON.stringify(S.scheduleDraft) !== JSON.stringify(sched())
+      ? `<button data-a="sreset">取消</button><button class="primary" data-a="ssave">儲存課表</button>`
+      : "");
+  $("dock").hidden = !dock;
+  $("dockIn").innerHTML = dock;
+}
+
+function route(){
+  const h = location.hash.slice(1);
+  S.view = ["today", "overview", "schedule"].includes(h) ? h : "today";
+  render();
+}
+
+/* ---------- 事件監聽 ---------- */
+function setHours(e, h){
+  const s = sById(e.sid);
+  h = Math.max(0, Math.round(h * 100) / 100);
+  e.hours = h;
+  e.amount = s ? pay(s, h) : e.amount;
+}
+
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-a]");
+  if (!b || b.tagName === "INPUT" || b.tagName === "SELECT") return;
+  const a = b.dataset.a, i = +b.dataset.i, j = +b.dataset.j;
+  if (a !== "sdel") S.armed = null;
+  const d = S.view === "today" ? draftFor(S.day) : null;
+
+  switch (a) {
+    case "prev":
+      S.day = addDays(S.day, -1);
+      break;
+    case "next":
+      S.day = addDays(S.day, 1);
+      break;
+    case "dec":
+      setHours(d.entries[i], d.entries[i].hours - 0.5);
+      d.dirty = true;
+      break;
+    case "inc":
+      setHours(d.entries[i], d.entries[i].hours + 0.5);
+      d.dirty = true;
+      break;
+    case "off":
+      d.entries[i].off = !d.entries[i].off;
+      d.dirty = true;
+      break;
+    case "del":
+      d.entries.splice(i, 1);
+      d.dirty = true;
+      break;
+    case "add": {
+      const who = $("addWho").value, v = parseFloat($("addVal").value);
+      if (!(v > 0)) {
+        toast(who === "__other" ? "請填金額" : "請填時數");
+        return;
+      }
+      if (who === "__other") {
+        d.entries.push({sid: null, name: $("addName").value.trim() || "其他收入", hours: 0, amount: Math.round(v), off: false});
+      } else {
+        const s = sById(who);
+        d.entries.push({sid: s.id, name: s.name, hours: v, amount: pay(s, v), off: false});
+      }
+      d.dirty = true;
+      break;
+    }
+    case "confirm":
+      return confirmDay(S.day);
+    case "pm":
+    case "nm": {
+      const [y, m] = S.month.split("-").map(Number);
+      const t = new Date(Date.UTC(y, m - 1 + (a === "nm" ? 1 : -1), 1));
+      S.month = keyOf(t).slice(0, 7);
+      break;
+    }
+    case "goday":
+      S.day = b.dataset.k;
+      location.hash = "today";
+      return;
+    case "csv": {
+      const data = csvOf(S.month);
+      if (downloadBlob(`家教收入-${S.month}.csv`, data, "text/csv;charset=utf-8")) {
+        toast(`已匯出 家教收入-${S.month}.csv`);
+      } else {
+        toast("匯出失敗，請重試");
+      }
+      return;
+    }
+    case "exportJson": {
+      const payload = JSON.stringify({
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        schedule: S.schedule,
+        months: S.months,
+        start: S.start
+      }, null, 2);
+      if (downloadBlob(`家教工時簿備份-${todayKey()}.json`, payload, "application/json;charset=utf-8")) {
+        toast("已匯出 JSON 備份檔案");
+      } else {
+        toast("匯出備份失敗");
+      }
+      return;
+    }
+    case "importJson": {
+      const fileInput = $("importFile");
+      fileInput.value = "";
+      fileInput.click();
+      return;
+    }
+    case "gdriveConnect":
+      requestDriveAuth("init", "");
+      return;
+    case "gdrivePush":
+      pushToDrive(false);
+      return;
+    case "gdrivePull":
+      pullFromDrive(false);
+      return;
+    case "gdriveDisconnect":
+      disconnectDrive();
+      return;
+    case "sday": {
+      const s = S.scheduleDraft[i], w = +b.dataset.w;
+      s.days = s.days.includes(w) ? s.days.filter(x => x !== w) : [...s.days, w].sort();
+      break;
+    }
+    case "tadd":
+      S.scheduleDraft[i].table.push(["", ""]);
+      break;
+    case "tdel":
+      S.scheduleDraft[i].table.splice(j, 1);
+      break;
+    case "sadd":
+      S.scheduleDraft.push({id: "s" + Date.now().toString(36), name: "", days: [], hours: 1.5, mode: "rate", rate: 500, table: []});
+      break;
+    case "sdel":
+      if (S.armed === i) {
+        S.scheduleDraft.splice(i, 1);
+        S.armed = null;
+      } else {
+        S.armed = i;
+      }
+      break;
+    case "sreset":
+      S.scheduleDraft = null;
+      break;
+    case "ssave":
+      return saveSchedule();
+    default:
+      return;
+  }
+  render();
+});
+
+document.addEventListener("input", ev => {
+  const el = ev.target, a = el.dataset.a, i = +el.dataset.i, j = +el.dataset.j;
+  if (!a) return;
+  if (S.view === "today") {
+    const d = draftFor(S.day), e = d.entries[i];
+    if (a === "hrs") {
+      const v = parseFloat(el.value);
+      setHours(e, isNaN(v) ? 0 : v);
+      d.dirty = true;
+    }
+    if (a === "amt") {
+      const v = parseFloat(el.value);
+      e.amount = isNaN(v) ? 0 : Math.round(v);
+      d.dirty = true;
+    }
+    const ae = $("amt-" + i);
+    if (ae) ae.textContent = money(e.off ? 0 : e.amount);
+    const dt = $("dayTotal");
+    if (dt) dt.textContent = money(d.entries.filter(x => !x.off).reduce((x, y) => x + y.amount, 0));
+  } else if (S.view === "schedule") {
+    if (a === "gclientid") {
+      S.gdrive.clientId = el.value.trim();
+      saveGdriveConfig();
+      return;
+    }
+    const s = S.scheduleDraft[i];
+    if (a === "sname") s.name = el.value;
+    if (a === "shours") s.hours = parseFloat(el.value) || 0;
+    if (a === "srate") s.rate = parseFloat(el.value) || 0;
+    if (a === "smode") {
+      s.mode = el.value;
+      if (s.mode === "table" && !s.table.length) s.table = [[s.hours, pay({...s, mode: "rate"}, s.hours)]];
+      return render();
+    }
+    if (a === "th") s.table[j][0] = el.value;
+    if (a === "ta") s.table[j][1] = el.value;
+    const sp = $("sp-" + i);
+    if (sp) sp.textContent = "每堂 " + money(pay(s, +s.hours || 0));
+    const wk = $("week");
+    if (wk) wk.textContent = money(S.scheduleDraft.reduce((x, t) => x + (t.days || []).length * pay(t, +t.hours || 0), 0));
+  } else return;
+  updateDock();
+});
+
+document.addEventListener("change", ev => {
+  if (ev.target.dataset.a && ev.target.tagName === "INPUT") render();
+});
+
+// 處理 JSON 備份檔案匯入還原
+$("importFile").addEventListener("change", ev => {
+  const file = ev.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(String(reader.result));
+      if (!parsed || typeof parsed !== "object" || (!Array.isArray(parsed.schedule) && typeof parsed.months !== "object")) {
+        throw new Error("格式不符");
+      }
+      applyImportedData(parsed);
+      if (S.gdrive.accessToken && Date.now() < S.gdrive.expiresAt) {
+        pushToDrive(true);
+      }
+      toast("備份資料已成功還原");
+      render();
+    } catch (err) {
+      console.error("匯入 JSON 失敗:", err);
+      toast("匯入失敗：檔案格式不正確");
+    }
+  };
+  reader.onerror = () => toast("讀取檔案失敗");
+  reader.readAsText(file);
+});
+
+window.addEventListener("hashchange", route);
+
+// 啟動應用程式：讀取 localStorage 並渲染初始畫面
+loadStore();
+route();
+}
+</script>
+</body>
+</html>
